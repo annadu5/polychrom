@@ -311,3 +311,120 @@ def grow_cubic(N, boxSize, method="standard"):
                 break
                 # print a
     return np.array(a) - 1
+
+
+def grow_cubic_nchains(N, boxSize, nChains, maxDistance, method="linear"):
+    """
+    This function grows nchains of ring or linear polymers on a cubic lattice
+    in the cubic box of size boxSize.
+
+    If method=="standard", grows a ring starting with a 4-monomer ring in the middle
+
+    if method =="extended", it grows a ring starting with a long ring
+    going from z=0, center of XY face, to z=boxSize center of XY face, and back.
+
+    If method="linear", then it grows a linearly organized chain from 0 to size.
+    The chain may stick out of the box by one, (N%2 != boxSize%2), or be flush with the box otherwise
+
+    Parameters
+    ----------
+    N: chain length. Must be even for rings.
+    boxSize: size of a box where polymer is generated.
+    nChains: number of chains
+    maxDistance: maximum distance between chains
+    method: "standard", "linear" or "extended"
+
+
+    """
+
+    NN = (N + maxDistance) * nChains
+
+    if NN > boxSize**3:
+        raise ValueError("Steps has to be less than size^3")
+    if NN > 0.9 * boxSize**3:
+        warnings.warn("NN > 0.9 * boxSize**3. It will be slow")
+    if (NN % 2 != 0) and (method != "linear"):
+        raise ValueError("NN has to be multiple of 2 for rings")
+
+    t = boxSize // 2
+    if method == "standard":
+        a = [(t, t, t), (t, t, t + 1), (t, t + 1, t + 1), (t, t + 1, t)]
+
+    elif method == "extended":
+        a = []
+        for i in range(1, boxSize):
+            a.append((t, t, i))
+
+        for i in range(boxSize - 1, 0, -1):
+            a.append((t, t - 1, i))
+        if len(a) > NN:
+            raise ValueError("polymer too short for the box size")
+
+    elif method == "linear":
+        a = []
+        for i in range(0, boxSize + 1):
+            a.append((t, t, i))
+        if (len(a) % 2) != (NN % 2):
+            a = a[1:]
+        if len(a) > NN:
+            raise ValueError("polymer too short for the box size")
+
+    else:
+        raise ValueError("method should be: standard, extended, or linear")
+
+    b = np.zeros((boxSize + 2, boxSize + 2, boxSize + 2), int)
+    for i in a:
+        b[i] = 1
+
+    for i in range((NN - len(a)) // 2):
+        while True:
+            if method == "linear":
+                t = np.random.randint(0, len(a) - 1)
+            else:
+                t = np.random.randint(0, len(a))
+
+            if t != len(a) - 1:
+                c = np.abs(np.array(a[t]) - np.array(a[t + 1]))
+                t0 = np.array(a[t])
+                t1 = np.array(a[t + 1])
+            else:
+                c = np.abs(np.array(a[t]) - np.array(a[0]))
+                t0 = np.array(a[t])
+                t1 = np.array(a[0])
+            cur_direction = np.argmax(c)
+            while True:
+                direction = np.random.randint(0, 3)
+                if direction != cur_direction:
+                    break
+            if np.random.random() > 0.5:
+                shift = 1
+            else:
+                shift = -1
+            shiftar = np.array([0, 0, 0])
+            shiftar[direction] = shift
+            t3 = t0 + shiftar
+            t4 = t1 + shiftar
+            if (
+                (b[tuple(t3)] == 0)
+                and (b[tuple(t4)] == 0)
+                and (np.min(t3) >= 1)
+                and (np.min(t4) >= 1)
+                and (np.max(t3) < boxSize + 1)
+                and (np.max(t4) < boxSize + 1)
+            ):
+                a.insert(t + 1, tuple(t3))
+                a.insert(t + 2, tuple(t4))
+                b[tuple(t3)] = 1
+                b[tuple(t4)] = 1
+                break
+                # print a
+
+    # Keep every N monomers and remove every maxDistance monomers,
+    # to create nChains chains
+    assert len(a) == NN
+    for i in range(NN):
+        # reversely traverse the list
+        cur = NN - i - 1
+        if cur % (N + maxDistance) >= N:
+            a.pop(cur)
+    return np.array(a) - 1
