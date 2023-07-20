@@ -427,4 +427,9 @@ def grow_cubic_nchains(N, boxSize, nChains, maxDistance, method="linear"):
         cur = NN - i - 1
         if cur % (N + maxDistance) >= N:
             a.pop(cur)
-    return np.array(a) - 1
+
+    # return list of chains
+    c = []
+    for i in range(nChains):
+        c.append(np.array(a[i*N:(i+1)*N]) - 1)
+    return c
