@@ -313,7 +313,7 @@ def grow_cubic(N, boxSize, method="standard"):
     return np.array(a) - 1
 
 
-def grow_cubic_nchains(N, boxSize, nChains, maxDistance, method="linear"):
+def grow_cubic_nchains(N, boxSize, nChains, maxDistance, method="linear", flatten=False):
     """
     This function grows nchains of ring or linear polymers on a cubic lattice
     in the cubic box of size boxSize.
@@ -333,6 +333,7 @@ def grow_cubic_nchains(N, boxSize, nChains, maxDistance, method="linear"):
     nChains: number of chains
     maxDistance: maximum distance between chains
     method: "standard", "linear" or "extended"
+    flatten: return a single array if True, a list of chains if False
 
 
     """
@@ -428,8 +429,11 @@ def grow_cubic_nchains(N, boxSize, nChains, maxDistance, method="linear"):
         if cur % (N + maxDistance) >= N:
             a.pop(cur)
 
-    # return list of chains
     c = []
-    for i in range(nChains):
-        c.append(np.array(a[i*N:(i+1)*N]) - 1)
+    if flatten:
+        c = np.array(a) - 1
+    else:
+        # return list of chains
+        for i in range(nChains):
+            c.append(np.array(a[i*N:(i+1)*N]) - 1)
     return c
